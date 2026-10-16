@@ -11,8 +11,13 @@ L["ttt2_desc_" .. RAT.name] = [[The Rat will learn the name of a living Traitor 
 -- CUSTOM ROLE LANGUAGE STRINGS
 L["ttt2_label_rat_expose_epop"] = "{name} is a Traitor. Kill them or die trying."
 L["ttt2_label_rat_expose_epop_desc"] = "Your location is now exposed to the Traitors for the rest of the round. Good luck."
+
+L["ttt2_label_rat_expose_notraitors_epop"] = "There are no living Traitors left."
+L["ttt2_label_rat_expose_notraitors_epop_desc"] = "Your location has not been exposed."
+
 L["ttt2_label_rat_instantexpose_epop"] = "Your location is exposed to all Traitors."
 L["ttt2_label_rat_instantexpose_epop_desc"] = "Survive until your timer expires to learn the name of a living Traitor."
+
 L["ttt2_label_rat_markervision_title"] = "{name} is a Rat."
 L["ttt2_label_rat_markervision_desc"] = "If left alive, they will expose your role."
 

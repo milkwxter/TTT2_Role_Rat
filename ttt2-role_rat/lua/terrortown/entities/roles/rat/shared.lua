@@ -3,11 +3,12 @@ if SERVER then
 	
 	-- clients need these
 	resource.AddFile("materials/vgui/ttt/dynamic/roles/icon_rat.vmt")
-	resource.AddFile("materials/vgui/ttt/icon_rat.vmt")
+	resource.AddFile("materials/vgui/ttt/status/icon_rat_timer.vmt")
 	resource.AddFile("sound/rat_squeak.mp3")
 
 	util.AddNetworkString("TTT2_Rat_InstantExpose_Client")
 	util.AddNetworkString("TTT2_Rat_NormalExpose_Client")
+	util.AddNetworkString("TTT2_Rat_NormalExposeNoTraitors_Client")
 end
 
 -- shared convars
@@ -56,6 +57,7 @@ if SERVER then
 		end
 		
 		-- return a random guy from list
+		if #livingTraitors == 0 then return nil end
 		return livingTraitors[math.random(#livingTraitors)]
 	end
 
@@ -83,16 +85,21 @@ if SERVER then
 		
 		-- start a timer for the rat
 		timer.Create("ttt2_rat_clock_timer_" .. ply:SteamID64(), GetConVar("ttt2_rat_traitor_reveal_timer"):GetInt(), 1, function()
-			-- if player is gone for whatever reason
+			-- more checks
 			if not IsValid(ply) then return end
+			if not ply:IsActive() then return end
+			if ply:GetSubRole() ~= ROLE_RAT then return end
 			
 			-- call our custom function to get a traitor name
 			local traitorName = getLivingTraitorNick()
-			
-			-- Tell the Rat client to hear the sound
-			net.Start("TTT2_Rat_NormalExpose_Client")
-				net.WriteString(traitorName)
-			net.Send(ply)
+			if traitorName ~= nil then
+				net.Start("TTT2_Rat_NormalExpose_Client")
+					net.WriteString(traitorName)
+				net.Send(ply)
+			else
+				net.Start("TTT2_Rat_NormalExposeNoTraitors_Client")
+				net.Send(ply)
+			end
 			
 			-- skip the end if rat was exposed on spawn
 			if GetConVar("ttt2_rat_instant_expose"):GetBool() then return end
@@ -114,18 +121,12 @@ if SERVER then
 		ply:RemoveMarkerVision("ttt2_rat_player")
 		STATUS:RemoveStatus(ply, "ttt2_rat_expose_timer")
 	end
-
-	-- remove marker vision
-	hook.Add("TTTOnCorpseCreated", "TTT2_RatDeath", function(rag, ply)
-		if not IsValid(rag) or not IsValid(ply) then return end
-		if ply:GetSubRole() ~= ROLE_RAT then return end
-		ply:RemoveMarkerVision("ttt2_rat_player")
-	end)
 	
 	hook.Add("TTTEndRound", "TTT2_RatRoundEnd", function()
 		for _, ply in ipairs(player.GetAll()) do
 			if ply:GetSubRole() ~= ROLE_RAT then continue end
 			ply:RemoveMarkerVision("ttt2_rat_player")
+			timer.Remove("ttt2_rat_clock_timer_" .. ply:SteamID64())
 		end
 	end)
 end
@@ -135,11 +136,12 @@ if CLIENT then
 	local ParT = LANG.GetParamTranslation
 
 	local materialRat = Material("vgui/ttt/dynamic/roles/icon_rat.vmt")
+	local materialRatTimer = Material("vgui/ttt/status/icon_rat_timer.vmt")
 	
 	-- add status for client
 	hook.Add("Initialize", "TTT2_Rat_StatusInit", function()
 		STATUS:RegisterStatus("ttt2_rat_expose_timer", {
-			hud = materialRat,
+			hud = materialRatTimer,
 			type = "good",
 			name = "label_status_rattimer_name",
 			sidebarDescription = "label_status_rattimer_desc"
@@ -198,6 +200,14 @@ if CLIENT then
 		-- event popup
 		local textString = LANG.GetParamTranslation("ttt2_label_rat_expose_epop", {name = traitor})
 		EPOP:AddMessage({text = textString, color = TRAITOR.color}, "ttt2_label_rat_expose_epop_desc", 3, nil, true)
+		
+		-- sfx
+		surface.PlaySound("rat_squeak.mp3")
+	end)
+	
+	net.Receive("TTT2_Rat_NormalExposeNoTraitors_Client", function()
+		-- event popup
+		EPOP:AddMessage({text = "ttt2_label_rat_expose_notraitors_epop", color = RAT.color}, "ttt2_label_rat_expose_notraitors_epop_desc", 3, nil, true)
 		
 		-- sfx
 		surface.PlaySound("rat_squeak.mp3")
