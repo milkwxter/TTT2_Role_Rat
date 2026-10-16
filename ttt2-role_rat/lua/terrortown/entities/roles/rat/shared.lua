@@ -44,22 +44,19 @@ end
 if SERVER then
 	-- helper for traitor names
 	function getNamesOfTraitors()
-		-- Create a table
-		traitorTable = {}
-
-		-- loop through each player currently in the server
-		for i, v in ipairs( player.GetAll() ) do
-			if ( v:GetRealTeam() == "traitors" ) then
-				-- add traitors to that table
-				table.insert(traitorTable, v:GetName())
-			end
+		-- find all living traitors
+		livingTraitors = {}
+		for _, ply in ipairs( player.GetAll() ) do
+			if not IsValid(ply) or not ply:IsActive() then continue end
+			if ply:GetRealTeam() ~= TEAM_TRAITOR then continue end
+			
+			-- yeah this guy is alive
+			table.insert(livingTraitors, ply:Nick())
 		end
 
-		--Randomly select an element in that table
-		local randTraitor = traitorTable[math.random(#traitorTable)]
-
-		-- Create a string for the traitor
-		return "One of the traitors is: " .. randTraitor .. ". Kill him or die trying."
+		-- pick a random guy from list
+		local traitor = livingTraitors[math.random(#livingTraitors)]
+		return "One of the traitors is: " .. traitor .. ". Kill him or die trying."
 	end
 
 	-- expose rat on spawn depending on convar
