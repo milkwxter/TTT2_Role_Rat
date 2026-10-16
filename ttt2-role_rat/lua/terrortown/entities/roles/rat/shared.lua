@@ -4,7 +4,13 @@ if SERVER then
 	resource.AddFile("materials/vgui/ttt/dynamic/roles/icon_rat.vmt")
 
 	util.AddNetworkString("ttt2_rat_sound_net")
+	
+	-- server only convars
+	CreateConVar("ttt2_rat_instant_expose", 0, {FCVAR_ARCHIVE, FCVAR_NOTIFY}, 0, 1)
 end
+
+-- shared convars
+CreateConVar("ttt2_rat_traitor_reveal_timer", 120, {FCVAR_ARCHIVE, FCVAR_NOTIFY}, 10, 600)
 
 function ROLE:PreInitialize()
 	self.color = Color(80, 173, 59, 255)
@@ -35,29 +41,28 @@ function ROLE:Initialize()
 end
 
 if SERVER then
-	-- Give Loadout on respawn and rolechange
+	-- give loadout on respawn and rolechange
 	function ROLE:GiveRoleLoadout(ply, isRoleChange)
-	--Check if instant expose convar is on
-	--If so, instantly expose traitor to rat 
-	if GetConVar("ttt2_rat_instant_expose"):GetInt() == 1 then
-		for _, ply in ipairs( player.GetAll() ) do
-        -- check if player is valid
-        if not IsValid(ply) then return end
-        -- check if player is actually a rat
-        if ply:GetRoleString() == "rat" then
-          -- do rat marker
-          local mvObject = ply:AddMarkerVision("player_rat")
-          mvObject:SetOwner(TEAM_TRAITOR)
-          mvObject:SetVisibleFor(VISIBLE_FOR_TEAM)
-          mvObject:SyncToClients()
-          --displaying the proper message
-          EPOP:AddMessage(ply, {text = "You have been exposed!" , color = TRAITOR.color}, {text = "Survive until the timer to expose a traitor." , color = RAT.color}, 6, true)
-          -- Tell the Rat client to hear the sound
-          net.Start("ttt2_rat_sound_net")
-          net.Send(ply)
-        end
-		  end
+		if GetConVar("ttt2_rat_instant_expose"):GetInt() == 1 then
+			for _, ply in ipairs( player.GetAll() ) do
+			-- check if player is valid
+			if not IsValid(ply) then return end
+			-- check if player is actually a rat
+			if ply:GetRoleString() == "rat" then
+			-- do rat marker
+			local mvObject = ply:AddMarkerVision("player_rat")
+			mvObject:SetOwner(TEAM_TRAITOR)
+			mvObject:SetVisibleFor(VISIBLE_FOR_TEAM)
+			mvObject:SyncToClients()
+			--displaying the proper message
+			EPOP:AddMessage(ply, {text = "You have been exposed!" , color = TRAITOR.color}, {text = "Survive until the timer to expose a traitor." , color = RAT.color}, 6, true)
+			-- Tell the Rat client to hear the sound
+			net.Start("ttt2_rat_sound_net")
+			net.Send(ply)
+			end
+		end
 	end
+	
     --Start the rat clock
     STATUS:AddTimedStatus(ply, "ttt2_rat_expose_timer", GetConVar("ttt2_rat_traitor_reveal_timer"):GetInt(), true)
     timer.Create("ttt2_rat_clock_timer", GetConVar("ttt2_rat_traitor_reveal_timer"):GetInt(), 1, function()
