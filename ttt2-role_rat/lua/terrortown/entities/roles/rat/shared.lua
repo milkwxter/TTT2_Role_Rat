@@ -146,12 +146,12 @@ if CLIENT then
 	local materialRat = Material("vgui/ttt/dynamic/roles/icon_rat.vmt")
 	
 	-- add status for client
-	hook.Add("Initialize", "TTT2_Rat_Status", function()
+	hook.Add("Initialize", "TTT2_Rat_StatusInit", function()
 		STATUS:RegisterStatus("ttt2_rat_expose_timer", {
-			hud = Material("vgui/ttt/dynamic/roles/icon_rat.vmt"),
+			hud = materialRat,
 			type = "good",
-			name = "ratTimerName",
-			sidebarDescription = "ratTimerDesc"
+			name = "label_status_rattimer_name",
+			sidebarDescription = "label_status_rattimer_desc"
 		})
 	end)
 
@@ -179,7 +179,7 @@ if CLIENT then
 
 		form:MakeSlider({
 			serverConvar = "ttt2_rat_traitor_reveal_timer",
-			label = "label_rat_traitor_reveal_time",
+			label = "label_convar_rat_traitor_reveal_time",
 			min = 10,
 			max = 600,
 			decimal = 0,
@@ -187,7 +187,7 @@ if CLIENT then
 
 		form:MakeCheckBox({
 			serverConvar = "ttt2_rat_instant_expose",
-			label = "label_rat_instant_expose"
+			label = "label_convar_rat_instant_expose"
 		})
 	end
 	
