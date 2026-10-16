@@ -1,7 +1,10 @@
 if SERVER then
 	AddCSLuaFile()
-
+	
+	-- clients need these
 	resource.AddFile("materials/vgui/ttt/dynamic/roles/icon_rat.vmt")
+	resource.AddFile("materials/vgui/ttt/icon_rat.vmt")
+	resource.AddFile("sound/rat_squeak.mp3")
 
 	util.AddNetworkString("TTT2_Rat_InstantExpose_Client")
 	util.AddNetworkString("TTT2_Rat_NormalExpose_Client")
