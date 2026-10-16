@@ -3,14 +3,14 @@ if SERVER then
 
 	resource.AddFile("materials/vgui/ttt/dynamic/roles/icon_rat.vmt")
 
-	util.AddNetworkString("ttt2_rat_sound_net")
+	util.AddNetworkString("TTT2_Rat_InstantExpose")
 	
 	-- server only convars
-	CreateConVar("ttt2_rat_instant_expose", 0, {FCVAR_ARCHIVE, FCVAR_NOTIFY}, 0, 1)
+	CreateConVar("ttt2_rat_instant_expose", 0, {FCVAR_ARCHIVE, FCVAR_NOTIFY}, "Should the rat be exposed on spawn?", 0, 1)
 end
 
 -- shared convars
-CreateConVar("ttt2_rat_traitor_reveal_timer", 120, {FCVAR_ARCHIVE, FCVAR_NOTIFY}, 10, 600)
+CreateConVar("ttt2_rat_traitor_reveal_timer", 120, {FCVAR_ARCHIVE, FCVAR_NOTIFY, FCVAR_REPLICATED}, "Seconds to reveal traitors to the rat", 10, 600)
 
 function ROLE:PreInitialize()
 	self.color = Color(80, 173, 59, 255)
@@ -41,94 +41,89 @@ function ROLE:Initialize()
 end
 
 if SERVER then
-	-- give loadout on respawn and rolechange
+	-- expose rat on spawn depending on convar
 	function ROLE:GiveRoleLoadout(ply, isRoleChange)
-		if GetConVar("ttt2_rat_instant_expose"):GetInt() == 1 then
-			for _, ply in ipairs( player.GetAll() ) do
-			-- check if player is valid
-			if not IsValid(ply) then return end
-			-- check if player is actually a rat
-			if ply:GetRoleString() == "rat" then
-			-- do rat marker
-			local mvObject = ply:AddMarkerVision("player_rat")
-			mvObject:SetOwner(TEAM_TRAITOR)
-			mvObject:SetVisibleFor(VISIBLE_FOR_TEAM)
-			mvObject:SyncToClients()
+		-- skip if convar is disabled
+		if not GetConVar("ttt2_rat_instant_expose"):GetBool() then return end
+		
+		-- early returns
+		if not IsValid(ply) then return end
+		if ply:GetSubRole() ~= ROLE_RAT then return end
+		
+		-- give traitors marker vision on him
+		local mvObject = ply:AddMarkerVision("ttt2_rat_player")
+		mvObject:SetOwner(ROLE_TRAITOR)
+		mvObject:SetVisibleFor(VISIBLE_FOR_ROLE)
+		mvObject:SyncToClients()
+		
+		-- network to the rat player he is insta exposed
+		net.Start("TTT2_Rat_InstantExpose")
+		net.Send(ply)
+	
+		--Start the rat clock
+		STATUS:AddTimedStatus(ply, "ttt2_rat_expose_timer", GetConVar("ttt2_rat_traitor_reveal_timer"):GetInt(), true)
+		timer.Create("ttt2_rat_clock_timer", GetConVar("ttt2_rat_traitor_reveal_timer"):GetInt(), 1, function()
+			-- call our custom function to out the traitors
+			exposeTraitorToRat()
 			--displaying the proper message
-			EPOP:AddMessage(ply, {text = "You have been exposed!" , color = TRAITOR.color}, {text = "Survive until the timer to expose a traitor." , color = RAT.color}, 6, true)
+			EPOP:AddMessage(ply, {text =  ratTraitorString, color = TRAITOR.color}, {text = "The Traitors can see your location now. Get ready for a fight!", color = RAT.color}, 6, true)
 			-- Tell the Rat client to hear the sound
 			net.Start("ttt2_rat_sound_net")
 			net.Send(ply)
+			--Execute this code when we didn't instantly expose rat
+			if GetConVar("ttt2_rat_instant_expose"):GetInt() == 0 then
+				-- highlight the rat for all traitors
+				for _, ply in ipairs( player.GetAll() ) do
+					-- check if player is valid
+					if not IsValid(ply) then return end
+					-- check if player is actually a rat
+					if ply:GetRoleString() == "rat" then
+						-- do rat marker
+						local mvObject = ply:AddMarkerVision("ttt2_rat_player")
+						mvObject:SetOwner(TEAM_TRAITOR)
+						mvObject:SetVisibleFor(VISIBLE_FOR_TEAM)
+						mvObject:SyncToClients()
+					end
+				end
 			end
-		end
-	end
-	
-    --Start the rat clock
-    STATUS:AddTimedStatus(ply, "ttt2_rat_expose_timer", GetConVar("ttt2_rat_traitor_reveal_timer"):GetInt(), true)
-    timer.Create("ttt2_rat_clock_timer", GetConVar("ttt2_rat_traitor_reveal_timer"):GetInt(), 1, function()
-      -- call our custom function to out the traitors
-      exposeTraitorToRat()
-	  --displaying the proper message
-	  EPOP:AddMessage(ply, {text =  ratTraitorString, color = TRAITOR.color}, {text = "The Traitors can see your location now. Get ready for a fight!", color = RAT.color}, 6, true)
-	  -- Tell the Rat client to hear the sound
-	  net.Start("ttt2_rat_sound_net")
-      net.Send(ply)
-	  --Execute this code when we didn't instantly expose rat
-	  if GetConVar("ttt2_rat_instant_expose"):GetInt() == 0 then
-      -- highlight the rat for all traitors
-      for _, ply in ipairs( player.GetAll() ) do
-        -- check if player is valid
-        if not IsValid(ply) then return end
-        -- check if player is actually a rat
-        if ply:GetRoleString() == "rat" then
-          -- do rat marker
-          local mvObject = ply:AddMarkerVision("player_rat")
-          mvObject:SetOwner(TEAM_TRAITOR)
-          mvObject:SetVisibleFor(VISIBLE_FOR_TEAM)
-          mvObject:SyncToClients()
-		end
-	  end
-	 end
-    end)
+		end)
 	end
 
 	-- Remove Loadout on death and rolechange
 	function ROLE:RemoveRoleLoadout(ply, isRoleChange)
     timer.Remove("ttt2_rat_clock_timer")
-    ply:RemoveMarkerVision("player_rat")
+    ply:RemoveMarkerVision("ttt2_rat_player")
     STATUS:RemoveStatus(ply, "ttt2_rat_expose_timer")
 	end
 
-  -- Remove wallhacks when the rat dies
-	hook.Add("TTTOnCorpseCreated", "RatRoleDies", function(rag, ply)
+	-- remove marker vision
+	hook.Add("TTTOnCorpseCreated", "TTT2_RatDeath", function(rag, ply)
 		if not IsValid(rag) or not IsValid(ply) then return end
-    if ply:GetRoleString() == "rat" then
-      ply:RemoveMarkerVision("player_rat")
-    end
+		if ply:GetSubRole() ~= ROLE_RAT then return end
+		ply:RemoveMarkerVision("ttt2_rat_player")
 	end)
 
-  -- Remove wallhacks when the rat dies
+	-- Remove wallhacks when the rat dies
 	hook.Add("TTTEndRound", "RatRoundEnd", function()
-    for _, v in ipairs(player.GetAll()) do
-      if v:GetSubRole() == ROLE_RAT then
-        v:RemoveMarkerVision("player_rat")
-      end
-    end
+		for _, ply in ipairs(player.GetAll()) do
+			if ply:GetSubRole() ~= ROLE_RAT then return end
+			ply:RemoveMarkerVision("ttt2_rat_player")
+		end
 	end)
 end
 
--- actual wallhacks part
 if CLIENT then
 	local TryT = LANG.TryTranslation
 	local ParT = LANG.GetParamTranslation
 
 	local materialRat = Material("vgui/ttt/dynamic/roles/icon_rat.vmt")
 
+	-- marker vision
 	hook.Add("TTT2RenderMarkerVisionInfo", "HUDDrawMarkerVisionRatPlayer", function(mvData)
 		local ent = mvData:GetEntity()
 		local mvObject = mvData:GetMarkerVisionObject()
 
-    if not mvObject:IsObjectFor(ent, "player_rat") then return end
+		if not mvObject:IsObjectFor(ent, "ttt2_rat_player") then return end
 
 		local distance = math.Round(util.HammerUnitsToMeters(mvData:GetEntityDistance()), 1)
 
@@ -140,32 +135,31 @@ if CLIENT then
 		mvData:AddDescriptionLine(ParT("marker_vision_distance", {distance = distance}))
 		mvData:AddDescriptionLine(TryT(mvObject:GetVisibleForTranslationKey()), COLOR_SLATEGRAY)
 	end)
-end
-
--- adding convars to the TTT2 menu
-if CLIENT then
-  function ROLE:AddToSettingsMenu(parent)
-    local form = vgui.CreateTTT2Form(parent, "header_roles_additional")
-    
-	form:MakeSlider({
-      serverConvar = "ttt2_rat_traitor_reveal_timer",
-      label = "label_rat_traitor_reveal_time",
-      min = 60,
-      max = 240,
-      decimal = 0,
-    })
 	
-	form:MakeCheckBox({
-      serverConvar = "ttt2_rat_instant_expose",
-      label = "label_rat_instant_expose"
-    })
+	-- f1 menu support
+	function ROLE:AddToSettingsMenu(parent)
+		local form = vgui.CreateTTT2Form(parent, "header_roles_additional")
 
-  end
-end
+		form:MakeSlider({
+			serverConvar = "ttt2_rat_traitor_reveal_timer",
+			label = "label_rat_traitor_reveal_time",
+			min = 10,
+			max = 600,
+			decimal = 0,
+		})
 
-if CLIENT then
-  net.Receive("ttt2_rat_sound_net", function()
-    --playing the squeak!
+		form:MakeCheckBox({
+			serverConvar = "ttt2_rat_instant_expose",
+			label = "label_rat_instant_expose"
+		})
+	end
+	
+	-- networked message
+	net.Receive("TTT2_Rat_InstantExpose", function()
+		-- event popup
+		EPOP:AddMessage({text = "You have been exposed!" , color = TRAITOR.color}, {text = "Survive until the timer to expose a traitor." , color = RAT.color}, 3, nil, true)
+		
+		-- sfx
 		surface.PlaySound("rat_squeak.mp3")
-  end)
+	end)
 end
