@@ -59,8 +59,8 @@ if SERVER then
 		-- network to the rat player he is insta exposed
 		net.Start("TTT2_Rat_InstantExpose")
 		net.Send(ply)
-	
-		--Start the rat clock
+		
+		-- start a timer for the rat
 		STATUS:AddTimedStatus(ply, "ttt2_rat_expose_timer", GetConVar("ttt2_rat_traitor_reveal_timer"):GetInt(), true)
 		timer.Create("ttt2_rat_clock_timer", GetConVar("ttt2_rat_traitor_reveal_timer"):GetInt(), 1, function()
 			-- call our custom function to out the traitors
@@ -70,30 +70,30 @@ if SERVER then
 			-- Tell the Rat client to hear the sound
 			net.Start("ttt2_rat_sound_net")
 			net.Send(ply)
-			--Execute this code when we didn't instantly expose rat
-			if GetConVar("ttt2_rat_instant_expose"):GetInt() == 0 then
-				-- highlight the rat for all traitors
-				for _, ply in ipairs( player.GetAll() ) do
-					-- check if player is valid
-					if not IsValid(ply) then return end
-					-- check if player is actually a rat
-					if ply:GetRoleString() == "rat" then
-						-- do rat marker
-						local mvObject = ply:AddMarkerVision("ttt2_rat_player")
-						mvObject:SetOwner(TEAM_TRAITOR)
-						mvObject:SetVisibleFor(VISIBLE_FOR_TEAM)
-						mvObject:SyncToClients()
-					end
-				end
+			
+			-- skip the end if rat was exposed on spawn
+			if GetConVar("ttt2_rat_instant_expose"):GetBool() then return end
+			
+			-- highlight the rat for all traitors
+			for _, ply in ipairs(player.GetAll()) do
+				-- simple checks
+				if not IsValid(ply) then return end
+				if ply:GetSubRole() ~= ROLE_RAT then return end
+				
+				-- add the rat marker vision
+				local mvObject = ply:AddMarkerVision("ttt2_rat_player")
+				mvObject:SetOwner(TEAM_TRAITOR)
+				mvObject:SetVisibleFor(VISIBLE_FOR_TEAM)
+				mvObject:SyncToClients()
 			end
 		end)
 	end
 
 	-- Remove Loadout on death and rolechange
 	function ROLE:RemoveRoleLoadout(ply, isRoleChange)
-    timer.Remove("ttt2_rat_clock_timer")
-    ply:RemoveMarkerVision("ttt2_rat_player")
-    STATUS:RemoveStatus(ply, "ttt2_rat_expose_timer")
+		timer.Remove("ttt2_rat_clock_timer")
+		ply:RemoveMarkerVision("ttt2_rat_player")
+		STATUS:RemoveStatus(ply, "ttt2_rat_expose_timer")
 	end
 
 	-- remove marker vision
