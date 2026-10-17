@@ -21,10 +21,19 @@ L["ttt2_label_rat_instantexpose_epop_desc"] = "Survive until your timer expires 
 L["ttt2_label_rat_markervision_title"] = "{name} is a Rat."
 L["ttt2_label_rat_markervision_desc"] = "If left alive, they will expose your role."
 
+L["ttt2_label_rat_chat_start"] = "[RAT] "
+L["ttt2_label_rat_chat_traitor"] = "{name} is a Traitor."
+L["ttt2_label_rat_chat_end"] = " This message is visible to you only."
+
 -- CONVAR LANGUAGE STRINGS
-L["label_convar_rat_traitor_reveal_time"] = "Seconds to reveal traitors to the rat"
-L["label_convar_rat_instant_expose"] = "Should the rat be exposed on spawn?"
+L["label_convar_rat_traitor_reveal_time"] = "Seconds to reveal traitors to the Rat"
+L["label_convar_rat_instant_expose"] = "Should the Rat be exposed on spawn?"
+L["label_convar_rat_chat_reminder"] = "Remind the Rat in chat when the Traitor is revealed?"
 
 -- TIMER LANGUAGE STRINGS
 L["label_status_rattimer_name"] = "Rat Expose Timer"
 L["label_status_rattimer_desc"] = "When this timer finishes, exposes a Traitor to you."
+
+-- CLIENTSIDE MENU LANGUAGE STRINGS
+L["submenu_addons_rat_title"] = "Rat Subrole"
+L["header_addons_rat_title"] = "Client Rat Subrole Settings"

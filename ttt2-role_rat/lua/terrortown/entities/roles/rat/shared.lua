@@ -15,6 +15,10 @@ end
 CreateConVar("ttt2_rat_instant_expose", 0, {FCVAR_ARCHIVE, FCVAR_NOTIFY, FCVAR_REPLICATED}, "Should the rat be exposed on spawn?", 0, 1)
 CreateConVar("ttt2_rat_traitor_reveal_timer", 120, {FCVAR_ARCHIVE, FCVAR_NOTIFY, FCVAR_REPLICATED}, "Seconds to reveal traitors to the rat", 10, 600)
 
+if CLIENT then
+	CreateClientConVar("ttt2_rat_chat_reminder", 1, true, false, "Remind the Rat in chat when the Traitor is revealed?", 0, 1)
+end
+
 function ROLE:PreInitialize()
 	self.color = Color(80, 173, 59, 255)
 
@@ -138,6 +142,9 @@ if CLIENT then
 	local materialRat = Material("vgui/ttt/dynamic/roles/icon_rat.vmt")
 	local materialRatTimer = Material("vgui/ttt/status/icon_rat_timer.vmt")
 	
+	local innocentGreen = Color(80, 173, 59)
+	local traitorRed = Color(209, 43, 39)
+	
 	-- add status for client
 	hook.Add("Initialize", "TTT2_Rat_StatusInit", function()
 		STATUS:RegisterStatus("ttt2_rat_expose_timer", {
@@ -196,6 +203,15 @@ if CLIENT then
 	
 	net.Receive("TTT2_Rat_NormalExpose_Client", function()
 		local traitor = net.ReadString()
+		
+		-- chat message incase you miss the event popup
+		if GetConVar("ttt2_rat_instant_expose"):GetBool() then
+			chat.AddText(
+				innocentGreen, TryT("ttt2_label_rat_chat_start"),
+				traitorRed, ParT("ttt2_label_rat_chat_traitor", {name = traitor}),
+				COLOR_SLATEGRAY, TryT("ttt2_label_rat_chat_end")
+			)
+		end
 		
 		-- event popup
 		local textString = LANG.GetParamTranslation("ttt2_label_rat_expose_epop", {name = traitor})
